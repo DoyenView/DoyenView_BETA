@@ -1,0 +1,7 @@
+*.env
+*.pyc
+__pycache__/
+.vscode/
+*.log
+mock_engine_cache/
+../PRIVATE_DO_NOT_PUSH/
