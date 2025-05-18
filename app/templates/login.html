@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Commander Authentication - DoyenView</title>
+</head>
+<body style="background-color: black; color: #81D8D0; font-family: 'Segoe UI', Tahoma, sans-serif;">
+
+    <!-- #----------- Login Header ----------- -->
+    <h1>Authentication</h1>
+    <hr style="border: 1px solid #81D8D0;">
+
+    <!-- #----------- Login Form ----------- -->
+    <form action="/" method="post">
+        <input type="password" name="password" placeholder="Enter Passphrase..." style="width: 400px; background-color: #222; color: #81D8D0; border: none; padding: 10px;">
+        <button type="submit" style="background-color: #81D8D0; color: black; padding: 10px; margin-left: 5px;">Authenticate</button>
+    </form>
+
+    <!-- #----------- Error Message Display ----------- -->
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+</body>
+</html>

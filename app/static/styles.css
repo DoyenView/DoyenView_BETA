@@ -1,0 +1,412 @@
+/*--Global Color Scheme--*/
+body {
+    background-color: black;
+    color: #81D8D0;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+hr {
+    border: 1px solid #81D8D0;
+}
+
+h1, h2, h3 {
+    color: #81D8D0;
+}
+
+button {
+    background-color: #81D8D0;
+    color: black;
+    padding: 10px;
+    margin: 5px 5px 5px 0;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #5FBFC2;
+}
+
+pre {
+    color: #81D8D0;
+    font-family: monospace;
+}
+
+input[type="text"],
+input[type="password"] {
+    background-color: #222;
+    color: #81D8D0;
+    border: none;
+    padding: 10px;
+    width: 400px;
+}
+
+/*--HUD Row Layout (Top 2 rows) --*/
+.hud-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    margin-bottom: 5px;
+    gap: 20px;
+}
+
+.branding {
+    font-size: 24px;
+    font-weight: bold;
+    color: #81D8D0;
+    text-align: left;
+}
+
+.branding-small {
+    font-size: 16px;
+    font-weight: 500;
+    color: #81D8D0;
+    text-align: left;
+    padding-left: 5px;
+}
+
+.command-form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.top-input {
+    flex-grow: 1;
+    background-color: #222;
+    color: #81D8D0;
+    padding: 10px;
+    border: none;
+}
+
+.top-button {
+    background-color: #81D8D0;
+    color: black;
+    padding: 10px 15px;
+    margin-left: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.top-button:hover {
+    background-color: #5FBFC2;
+}
+
+.hud-status {
+    text-align: right;
+    font-size: 14px;
+}
+
+.hud-label {
+    color: white;
+    font-weight: bold;
+}
+
+.spacer-small {
+    height: 8px;
+}
+
+/*--Command Shortcuts Panel--*/
+.command-shortcuts-center {
+    text-align: center;
+}
+
+.command-shortcuts-center h3 {
+    margin-bottom: 5px;
+    color: #81D8D0;
+}
+
+.mission-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+/*--Tiffany Divider Cloud--*/
+.divider {
+    height: 12px;
+    margin: 30px 0;
+    background: repeating-linear-gradient(
+        45deg,
+        #81D8D0,
+        #81D8D0 2px,
+        transparent 2px,
+        transparent 4px
+    );
+    opacity: 0.5;
+}
+
+/*--Session Pulse Circle (Radar Style)--*/
+.session-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+    vertical-align: middle;
+}
+
+/* Session Dot Colors */
+.dot-closed { background-color: #FF4C4C; }       /* Red */
+.dot-premarket { background-color: #FFD700; }    /* Yellow */
+.dot-regular { background-color: #32CD32; }      /* Green */
+.dot-afterhours { background-color: #1E90FF; }   /* Blue */
+
+/* Pulse Animation */
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.6; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/*--Toggle Panel--*/
+.hud-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #111;
+    border: 1px solid #81D8D0;
+    border-radius: 6px;
+    color: #81D8D0;
+}
+.hud-toggles label {
+    cursor: pointer;
+}
+.hud-toggles input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/*--Commander Alert Boxes--*/
+.alert-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #111;
+    color: #81D8D0;
+    padding: 12px 20px;
+    border: 2px solid #81D8D0;
+    border-radius: 8px;
+    z-index: 1000;
+    font-weight: bold;
+    animation: fadeinout 10s;
+}
+.alert-info { border-color: #81D8D0; }
+.alert-warning { border-color: #FFD700; color: #FFD700; }
+.alert-danger { border-color: #FF4C4C; color: #FF4C4C; }
+
+@keyframes fadeinout {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/*--🧠 Commander Debrief Panel Styles--*/
+.debrief-panel {
+    background-color: #111;
+    padding: 15px;
+    border: 1px solid #81D8D0;
+    border-radius: 8px;
+    margin-top: 30px;
+    color: #81D8D0;
+}
+
+.debrief-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #81D8D0;
+    font-size: 14px;
+}
+
+.debrief-table th {
+    background-color: #222;
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #81D8D0;
+}
+
+.debrief-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #333;
+}
+
+.intel-row-mission {
+    background-color: #00330033;
+}
+
+.intel-row-command {
+    background-color: #001f3f33;
+}
+
+/*--🔎 Insight Panel Styling--*/
+.insight-panel {
+    background-color: #111;
+    border: 1px solid #81D8D0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 20px;
+    color: #81D8D0;
+}
+
+.insight-panel h2 {
+    margin-top: 0;
+    color: #81D8D0;
+}
+
+/*--🧠 Chief Panels --*/
+.chief-detail-panel,
+.chief-output-panel,
+.chief-log-viewer {
+    background-color: #111;
+    border: 1px solid #81D8D0;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 25px;
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+    color: #81D8D0;
+}
+
+/*-- Log Scroll Style --*/
+.log-scroll {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #000;
+    border: 1px dashed #81D8D0;
+}
+
+
+/*--💠 Floating Session Badge--*/
+.floating-session-badge {
+    position: fixed;
+    top: 15px;
+    right: 20px;
+    background-color: #111;
+    color: #81D8D0;
+    padding: 8px 12px;
+    border: 1px solid #81D8D0;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 1000;
+}
+
+
+.feedback {
+    margin-top: 5px;
+    font-size: 0.85em;
+}
+.badge {
+    background-color: #444;
+    color: #fff;
+    padding: 3px 8px;
+    margin-left: 5px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.badge.high-quality {
+    background-color: #32CD32; /* Lime Green */
+}
+.badge.needs-rework {
+    background-color: #FF4C4C; /* Red */
+}
+.badge.confluence {
+    background-color: #1E90FF; /* Dodger Blue */
+}
+.badge.risk-mismatch {
+    background-color: #FFD700; /* Gold */
+}
+.badge.neutral {
+    background-color: #999; /* Gray */
+}
+
+.route-btn {
+    background-color: #1a1a1a;
+    color: #81D8D0;
+    border: 1px solid #81D8D0;
+    padding: 5px 10px;
+    margin: 3px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .route-btn:hover {
+    background-color: #81D8D0;
+    color: black;
+  }
+  
+/* 🎯 AI Score Badge Logic (Phase 7T Final Patch) */
+.score-badge {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75em;
+    margin-left: 6px;
+    display: inline-block;
+    text-transform: uppercase;
+    box-shadow: 0 0 4px rgba(129, 216, 208, 0.4);
+}
+
+/* Map Tags to Actual Visuals */
+.score-badge.neutral {
+    background-color: #999;      /* Gray */
+    color: white;
+}
+.score-badge.high-quality {
+    background-color: #32CD32;   /* Green */
+    color: black;
+}
+.score-badge.confluence {
+    background-color: #1E90FF;   /* Blue */
+    color: white;
+}
+.score-badge.needs-rework {
+    background-color: #FF4C4C;   /* Red */
+    color: white;
+}
+
+
+.score-badge {
+    box-shadow: 0 0 4px rgba(129, 216, 208, 0.8);
+}
+
+
+.hud-command-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(12, 12, 12, 0.95);
+    color: white;
+    display: flex;
+    justify-content: center;
+    padding: 12px 0;
+    z-index: 1000;
+    box-shadow: 0px 2px 5px #81D8D0;
+}
+
+#globalCommandInput {
+    width: 300px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 5px;
+    margin-right: 10px;
+}
+
+#globalCommandForm button {
+    background-color: #81D8D0;
+    color: black;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DoyenView Chart Viewer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    input, select {
+      background-color: #000;
+      color: #81D8D0;
+      border: 1px solid #81D8D0;
+      padding: 4px 6px;
+      margin: 0 4px;
+      font-size: 0.95em;
+      border-radius: 4px;
+    }
+    button {
+      padding: 6px 10px;
+      background-color: #81D8D0;
+      border: none;
+      color: #000;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #A1ECE0;
+    }
+    #symbolForm {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #000;
+      color: #81D8D0;
+      padding: 12px 16px;
+      border-bottom: 1px solid #81D8D0;
+    }
+    .top-bar div {
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 🔷 HUD TOP BAR -->
+<div class="top-bar">
+  <div>DoyenView</div>
+  <form id="symbolForm">
+    <input list="symbol-list" name="symbol" id="symbolInput" placeholder="Enter ticker..." value="{{ selected_symbol if selected_symbol else 'AAPL' }}">
+    <datalist id="symbol-list">
+      {% for ticker in available_symbols %}
+        <option value="{{ ticker }}"></option>
+      {% endfor %}
+    </datalist>
+
+    <select name="interval" id="intervalSelect">
+      {% for label in ['1DAY','5DAY','15DAY','30DAY','90DAY','180DAY','360DAY','YTD','WTD','MAX'] %}
+      <option value="{{ label }}" {% if selected_interval == label %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="mode" id="modeSelect">
+      <option value="mock" {% if selected_mode == 'mock' %}selected{% endif %}>Mock</option>
+      <option value="realtime" {% if selected_mode == 'realtime' %}selected{% endif %}>Real-time</option>
+    </select>
+
+    <select name="volume" id="volumeToggle">
+      <option value="on" {% if selected_volume == 'on' %}selected{% endif %}>Volume On</option>
+      <option value="off" {% if selected_volume == 'off' %}selected{% endif %}>Volume Off</option>
+    </select>
+
+    <select name="chart_type" id="chartTypeSelect">
+      <option value="candlestick" {% if selected_chart_type == 'candlestick' %}selected{% endif %}>Candlestick</option>
+      <option value="line" {% if selected_chart_type == 'line' %}selected{% endif %}>Line</option>
+    </select>
+
+    <select name="intel" id="intelToggle">
+      <option value="on" {% if selected_intel == 'on' %}selected{% endif %}>Intel On</option>
+      <option value="off" {% if selected_intel == 'off' %}selected{% endif %}>Intel Off</option>
+    </select>
+
+    <select name="pulse" id="pulseToggle">
+      <option value="on" {% if selected_pulse == 'on' %}selected{% endif %}>Pulse On</option>
+      <option value="off" {% if selected_pulse == 'off' %}selected{% endif %}>Pulse Off</option>
+    </select>
+
+    <select name="study_rsi" id="studyRsiToggle">
+      <option value="on" {% if selected_study_rsi == 'on' %}selected{% endif %}>RSI On</option>
+      <option value="off" {% if selected_study_rsi == 'off' %}selected{% endif %}>RSI Off</option>
+    </select>
+
+    <button type="submit">Go</button>
+  </form>
+  <div><span id="session-time"></span> <span style="color:#FF6347;">●</span></div>
+</div>
+
+<!-- 📊 Chart Output -->
+<div style="padding: 12px;">
+  {{ chart_html|safe }}
+</div>
+
+<!-- 🕐 Session Clock -->
+<script>
+  function updateTime() {
+    document.getElementById("session-time").innerText = new Date().toLocaleTimeString();
+  }
+  setInterval(updateTime, 1000);
+</script>
+
+<!-- 🚀 Command Handler -->
+<script>
+  document.getElementById("symbolForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const params = {
+      symbol: document.getElementById("symbolInput").value.toUpperCase(),
+      interval: document.getElementById("intervalSelect").value,
+      mode: document.getElementById("modeSelect").value,
+      volume: document.getElementById("volumeToggle").value,
+      chart_type: document.getElementById("chartTypeSelect").value,
+      intel: document.getElementById("intelToggle").value,
+      pulse: document.getElementById("pulseToggle").value,
+      study_rsi: document.getElementById("studyRsiToggle").value
+    };
+    const query = Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
+    window.location.href = `/chart/${params.symbol}?${query}`;
+  });
+</script>
+
+
+
+<script>
+document.addEventListener('mousedown', function(e) {
+  if (e.button === 1) {  // Middle mouse button
+    e.preventDefault();
+    showChartToolMenu(e.clientX, e.clientY);
+  }
+});
+
+function showChartToolMenu(x, y) {
+  let menu = document.getElementById("chartToolMenu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "chartToolMenu";
+    menu.style.position = "fixed";
+    menu.style.zIndex = 9999;
+    menu.style.background = "#111";
+    menu.style.color = "#81D8D0";
+    menu.style.border = "1px solid #81D8D0";
+    menu.style.padding = "10px";
+    menu.style.borderRadius = "6px";
+    menu.style.boxShadow = "0 0 10px #81D8D0";
+    menu.innerHTML = "<b>Chart Tools</b><br><ul style='padding-left: 20px;'><li>Draw Line</li><li>Fib Retrace</li><li>Clear</li></ul>";
+    document.body.appendChild(menu);
+  }
+
+  menu.style.left = x + "px";
+  menu.style.top = y + "px";
+  menu.style.display = "block";
+
+  // Hide on outside click
+  setTimeout(() => {
+    document.addEventListener('click', () => {
+      if (menu) menu.style.display = "none";
+    }, { once: true });
+  }, 0);
+}
+</script>
+
+
+
+
+
+</body>
+</html>

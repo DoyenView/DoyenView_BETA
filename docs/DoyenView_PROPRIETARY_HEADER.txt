@@ -1,0 +1,16 @@
+# ===============================================================
+# 🚫 DOYENVIEW PROPRIETARY MODULE
+# ===============================================================
+# This file contains confidential and proprietary information
+# belonging to The Railroad Fund and its private product: DoyenView.
+#
+# Unauthorized reproduction, modification, or distribution
+# of this software, in whole or in part, is strictly prohibited.
+#
+# This file may only be shared internally with explicit permission
+# under NDA or equivalent license terms.
+#
+# MODULE ID: {filename}
+# PROJECT: DoyenView (MVP v0.01+)
+# CREATED BY: Commander
+# ===============================================================

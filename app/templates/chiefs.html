@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chiefs of Staff Panel - DoyenView</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='chiefs.css') }}">
+</head>
+<body>
+
+<!-- 🌐 Floating Clock HUD -->
+<div class="floating-session-badge">
+    <span class="session-dot" id="floating-session-indicator"></span>
+    <span id="floating-session-status">Loading...</span>
+    <span style="color:#999;">|</span>
+    <span id="floating-clock">--:--:--</span>
+</div>
+
+<h1 style="color: #81D8D0;">🧠 Chiefs of Staff - AI Cores</h1>
+
+<!-- 🧠 Global Chief Command Bar -->
+<div class="chief-command-bar">
+    <form id="chiefCommandForm" action="/chief/route" method="post">
+        <input type="text" name="command" id="chiefCommandInput" placeholder="Enter Chief command..." />
+        <button type="submit">Execute</button>
+    </form>
+    {% if request.args.get('reply') %}
+    <details open style="background-color:#111;padding:10px;margin-top:10px;border:1px solid #333;">
+        <summary style="color:#FFD700;">🗣️ Last Chief Reply</summary>
+        <p style="color:#32CD32;">{{ request.args.get('reply') }}</p>
+    </details>
+    {% endif %}
+</div>
+
+<!-- 💠 Divider -->
+<div class="chiefs-divider-line"></div>
+
+<!-- 🧠 Chief Cards Row -->
+<div class="chiefs-container">
+    {% for chief in chiefs %}
+    <a href="{{ url_for('load_chief', chief_name=chief.id) }}" class="chief-link"
+       title="🧠 {{ chief.last_command }}&#10;📡 {{ chief.last_response }}&#10;🕓 {{ chief.last_timestamp }}">
+        <div class="chief-card {% if selected_chief and selected_chief.id == chief.id %}selected{% endif %}"
+             style="border-color: {{ chief.color }};">
+
+            <div class="chief-header" style="background-color: {{ chief.color }};">
+                <span class="chief-icon">{{ chief.icon }}</span>
+                <h2>{{ chief.name }}</h2>
+            </div>
+            <div class="chief-body">
+                <p><strong>Role:</strong> {{ chief.role }}</p>
+                <p><strong>Status:</strong> {{ chief.status }}</p>
+                <p>{{ chief.description }}</p>
+            </div>
+
+            {% if chief.memory_snapshots %}
+            <div class="chief-memory">
+                <h4 style="color:#FFD700;margin-bottom:4px;">🧠 Last Commands</h4>
+                {% for snap in chief.memory_snapshots %}
+                <div class="memory-line">
+                    <code style="color:#FFD700;">🧠 {{ snap.command }}</code><br>
+                    <code style="color:#32CD32;">📡 {{ snap.response }}</code><br>
+                    <code style="color:#999;">🕓 {{ snap.timestamp }}</code>
+                    <hr>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </a>
+    <div class="agent-message-area" id="{{ chief.id }}-message-hud"></div>
+    {% endfor %}
+</div>
+
+<!-- 🔍 Specific Chief Interaction Panel -->
+{% if selected_chief %}
+<div class="chief-center-panel">
+
+    <div class="chief-detail-panel">
+        <h2 style="color: {{ selected_chief.color }};">🧠 {{ selected_chief.name }} Activated</h2>
+        <p><strong>Role:</strong> {{ selected_chief.role }}</p>
+        <p><strong>Status:</strong> {{ selected_chief.status }}</p>
+        <p>{{ selected_chief.description }}</p>
+
+        <form action="{{ url_for('subcommand_unified', chief_id=selected_chief.id) }}" method="post" class="chief-subform">
+            <h3>🎯 Strategy Input</h3>
+            <input type="text" id="{{ selected_chief.id }}-input" name="goal" placeholder="Enter Goal or Strategy..." required>
+            <button type="submit">Execute</button>
+        </form>
+
+        <!-- 📡 Agent2Agent -->
+        <div class="agent-controls">
+            <button class="route-btn" onclick="routeToChief('{{ selected_chief.id }}', 'intel')">📡 Forward to Intel</button>
+            <button class="route-btn" onclick="routeToChief('{{ selected_chief.id }}', 'risk')">📡 Forward to Risk</button>
+        </div>
+    </div>
+
+    {% if chief_output %}
+    <div class="chief-output-panel">
+        <h3 style="color: #81D8D0;">📡 Chief Output</h3>
+        <pre style="color: #32CD32; font-family: monospace;">{{ chief_output }}</pre>
+    </div>
+    {% endif %}
+
+    {% set logs = [] %}
+    {% if selected_chief.id == 'gota' %}
+        {% set logs = gota_logs if gota_logs is defined else [] %}
+    {% elif selected_chief.id == 'rapid' %}
+        {% set logs = rapid_logs if rapid_logs is defined else [] %}
+    {% elif selected_chief.id == 'engineering' %}
+        {% set logs = engineering_logs if engineering_logs is defined else [] %}
+    {% elif selected_chief.id == 'blackops' %}
+        {% set logs = blackops_logs if blackops_logs is defined else [] %}
+    {% elif selected_chief.id == 'intel' %}
+        {% set logs = intel_logs if intel_logs is defined else [] %}
+    {% endif %}
+
+    {% if logs %}
+    <details class="chief-log-viewer" open>
+        <summary><h3 style="color:#FFD700;">📜 {{ selected_chief.name }} Log</h3></summary>
+        <div class="log-scroll" id="{{ selected_chief.id }}-log-output">
+            {% for entry in logs %}
+            <div class="log-entry">
+                <code><strong>{{ entry.timestamp }}</strong></code><br>
+                <code style="color:#81D8D0;">🧠 {{ entry.command }}</code><br>
+                <code style="color:#32CD32;">{{ entry.response }}</code><br>
+                {% if entry.score %}
+                <div class="feedback">
+                    <strong>AI Score:</strong> {{ entry.score }} / 100
+                    {% for tag in entry.tags %}
+                    <span class="score-badge {{ tag|lower }}">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <hr>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+
+</div>
+{% endif %}
+
+<!-- ⏱️ Floating Clock & Session -->
+<script>
+function updateFloatingClock() {
+    const now = new Date();
+    document.getElementById("floating-clock").innerText = now.toLocaleTimeString();
+}
+setInterval(updateFloatingClock, 1000);
+updateFloatingClock();
+
+function updateFloatingSession() {
+    fetch('/current_session')
+    .then(response => response.json())
+    .then(data => {
+        const sessionText = data.session;
+        const sessionStatus = document.getElementById("floating-session-status");
+        const sessionIndicator = document.getElementById("floating-session-indicator");
+
+        sessionStatus.innerText = sessionText;
+        sessionIndicator.className = 'session-dot';
+
+        if (sessionText === "Premarket") sessionIndicator.classList.add("dot-premarket");
+        else if (sessionText === "Regular") sessionIndicator.classList.add("dot-regular");
+        else if (sessionText === "AfterHours") sessionIndicator.classList.add("dot-afterhours");
+        else sessionIndicator.classList.add("dot-closed");
+    })
+    .catch(console.error);
+}
+setInterval(updateFloatingSession, 30000);
+updateFloatingSession();
+
+function routeToChief(from, to) {
+    const input = document.getElementById(`${from}-input`);
+    const fromHUD = document.getElementById(`${from}-message-hud`);
+    const toHUD = document.getElementById(`${to}-message-hud`);
+    const msg = input?.value || "No message provided.";
+
+    const outgoingMsg = `<div class="hud-msg outgoing">🛰️ Forwarded to ${to.toUpperCase()}: "${msg}"</div>`;
+    const incomingMsg = `<div class="hud-msg incoming">🔁 Message from ${from.toUpperCase()}: "${msg}"</div>`;
+
+    if (fromHUD) fromHUD.innerHTML += outgoingMsg;
+    if (toHUD) toHUD.innerHTML += incomingMsg;
+}
+</script>
+
+</body>
+</html>

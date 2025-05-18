@@ -1,7 +1,33 @@
+# 🔐 Sensitive Keys and Env Files
 *.env
-*.pyc
-__pycache__/
-.vscode/
-*.log
-mock_engine_cache/
+
+# 🧠 Proprietary Directories (Never push)
 ../PRIVATE_DO_NOT_PUSH/
+../models/
+../app/chiefs/
+../app/missions/
+../app/system/
+../app/core/
+../utils/
+../testing_tools/
+../tests/
+../execute/
+../docs/unsorted archive/
+../docs/mf/
+
+# 🧪 Runtime / Debug Artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# 🖥️ IDE Config Files
+.vscode/
+.idea/
+
+# 🗃️ Cache or Package Artifacts
+*.egg-info/
+dist/
+build/
+.cache/

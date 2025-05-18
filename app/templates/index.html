@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DoyenView Command Line UI - MVP v0.01</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+
+
+    {% if not settings %}
+
+    
+    <h1 style="color: red;">Unauthorized Access. Redirecting to Login...</h1>
+    <script>
+        setTimeout(function() { window.location.href = "/"; }, 1000);
+    </script>
+{% endif %}
+
+<!-- #----------- HUD Row 1: Logo | Input | Clock ----------- -->
+<div class="hud-grid">
+    <div class="branding">🚀 DoyenView</div>
+    <form action="/execute" method="post" class="command-form">
+        <input type="text" name="command" placeholder="Enter Command..." class="top-input">
+        <button type="submit" class="top-button">Execute</button>
+    </form>
+    <div class="hud-status">
+        <p><span class="hud-label">Commander:</span> Authorized</p>
+        <p><span class="hud-label">Time:</span> <span id="clock">--:--:--</span></p>
+        <p><span class="hud-label">Session:</span> 
+            <span id="session-indicator" class="session-dot"></span> 
+            <span id="session-status">Loading...</span>
+        </p>
+    </div>
+</div>
+
+<!-- #----------- HUD Row 2: Tagline | Shortcuts ----------- -->
+<div class="hud-grid">
+    <div class="branding-small">DoyenView.ai Intelligence Suite</div>
+    <div class="command-shortcuts-center">
+        <h3>Command Shortcuts</h3>
+        <form action="/execute" method="post" class="mission-buttons">
+            <button type="submit" name="command" value="start recon">Start Recon</button>
+            <button type="submit" name="command" value="start engineering">Start Engineering</button>
+            <button type="submit" name="command" value="start encryption">Start Encryption</button>
+            <button type="submit" name="command" value="start market feed">Start Market Feed</button>
+            <button type="submit" name="command" value="start screener">Start Screener</button>
+            <button type="submit" name="command" value="start chart">Start Chart</button>
+            <button type="submit" name="command" value="launch insight">Launch Insight Engine</button>
+
+        </form>
+    </div>
+</div>
+
+<!-- #----------- Toggles ----------- -->
+<div class="hud-toggles">
+    <label><input type="checkbox" id="toggle-session-shading" checked> Session Shading</label>
+</div>
+
+<!-- #----------- Canvas ----------- -->
+<canvas id="sessionCanvas" width="1000" height="50" style="width: 100%; height: 50px; margin-top: 20px; background-color: black;"></canvas>
+<div class="future-status"></div>
+
+<!-- 🕒 Clock & Session Script -->
+<script>
+    function updateClock() {
+        const now = new Date();
+        document.getElementById("clock").innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function updateSession() {
+        fetch('/current_session')
+        .then(response => response.json())
+        .then(data => {
+            const sessionText = data.session;
+            const sessionStatus = document.getElementById("session-status");
+            const sessionIndicator = document.getElementById("session-indicator");
+
+            sessionStatus.innerText = sessionText;
+            sessionIndicator.className = 'session-dot';
+
+            if (sessionText === "Premarket") {
+                sessionIndicator.classList.add("dot-premarket");
+            } else if (sessionText === "Regular") {
+                sessionIndicator.classList.add("dot-regular");
+            } else if (sessionText === "AfterHours") {
+                sessionIndicator.classList.add("dot-afterhours");
+            } else {
+                sessionIndicator.classList.add("dot-closed");
+            }
+        })
+        .catch(console.error);
+    }
+    setInterval(updateSession, 30000);
+    updateSession();
+</script>
+
+<!-- ✦ Divider -->
+<div class="divider"></div>
+
+<!-- #----------- Commander Output ----------- -->
+<div id="response">
+
+    {% if response %}
+        <p><strong>Response:</strong> {{ response }}</p>
+    {% endif %}
+
+    {% if missions %}
+        <p><strong>Mission Archive:</strong></p>
+        <ul>{% for m in missions %}<li>{{ m }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if screener %}
+        <h2>Top Movers Screener</h2>
+        <h3 style="color: #32CD32;">Top Gainers</h3>
+        <ul>
+            {% for gainer in screener['Top Gainers'] %}
+                <li style="color: #32CD32;">{{ gainer['Ticker'] }} — {{ gainer['Change'] }}</li>
+            {% endfor %}
+        </ul>
+        <h3 style="color: #FF6347;">Top Losers</h3>
+        <ul>
+            {% for loser in screener['Top Losers'] %}
+                <li style="color: #FF6347;">{{ loser['Ticker'] }} — {{ loser['Change'] }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if market_feed is mapping %}
+        <h2>📊 Market Summary</h2>
+        <ul>
+            {% for key, value in market_feed.items() %}
+                <li><strong>{{ key }}</strong>: {{ value }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if chart_url %}
+        <h2>Chart Viewer</h2>
+        <img src="{{ chart_url }}" alt="Stock Chart" style="max-width: 100%; border: 2px solid #81D8D0;">
+    {% endif %}
+
+    {% if mission_logs %}
+        <details open>
+            <summary><strong>Mission Logs</strong></summary>
+            <div style="background-color: #111; padding: 10px; border: 1px solid #81D8D0; max-height: 400px; overflow-y: auto;">
+                {% for log in mission_logs %}
+                    <pre style="color: #81D8D0;">{{ log }}</pre>
+                    <hr>
+                {% endfor %}
+            </div>
+        </details>
+    {% endif %}
+
+    {% if show_debrief and intel_logs %}
+    <!-- 🧠 Collapsible Commander Debrief Panel -->
+    <details class="debrief-panel" open>
+        <summary><strong>🧠 Commander Debrief</strong></summary>
+        <div style="margin-top: 10px; max-height: 250px; overflow-y: auto;">
+            <table class="debrief-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Type</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for intel in intel_logs %}
+                    <tr class="intel-row-{{ intel.mission_type|lower }}">
+                        <td>{{ intel.timestamp }}</td>
+                        <td>{{ intel.mission_type }}</td>
+                        <td>{{ intel.details }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+    {% endif %}
+
+
+    {% if insights %}
+    <!-- 🔎 Commander Insight Engine -->
+    <div class="insight-panel">
+        <h2>🔎 Commander Insight Engine</h2>
+        <p><strong>Total Logged Actions:</strong> {{ insights.total_entries }}</p>
+        <p><strong>Most Frequent Type:</strong> {{ insights.most_common_type }}</p>
+        <p><strong>Top Commands:</strong></p>
+        <ul>
+           {% for cmd, count in insights.top_commands %}
+                <li>{{ cmd }} — {{ count }} times</li>
+            {% endfor %}
+        </ul>
+        <p><strong>Tactical Recommendation:</strong> {{ insights.recommendation }}</p>
+    </div>
+    {% endif %}
+
+</div>
+
+
+
+
+<!-- ✦ Divider -->
+<div class="divider"></div>
+
+<!-- #----------- Settings Panel ----------- -->
+{% if settings %}
+    <h2>Commander Settings Panel</h2>
+    <ul>{% for key, value in settings.items() %}<li><strong>{{ key }}</strong>: {{ value }}</li>{% endfor %}</ul>
+{% endif %}
+
+<!-- #----------- Scripts ----------- -->
+<script src="{{ url_for('static', filename='alert_manager.js') }}"></script>
+<script src="{{ url_for('static', filename='session_shading.js') }}"></script>
+
+</body>
+</html>

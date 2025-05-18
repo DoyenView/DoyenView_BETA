@@ -1,0 +1,4 @@
+PH = PHASES
+MB = Master Blueprint
+MS = Master Prompt
+MF = Master Files

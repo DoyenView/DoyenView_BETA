@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DoyenView - Private AI (PAI)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+
+    /* 🔝 Fixed top intro heading */
+    .intro-heading {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      color: #81D8D0;
+      z-index: 20;
+    }
+
+    .intro-heading h1 {
+      font-size: 2.4em;
+      margin: 0;
+      text-shadow: 0 0 8px #81D8D0;
+    }
+
+    .intro-heading h2 {
+      font-size: 1.3em;
+      margin: 6px 0;
+    }
+
+    .intro-heading p {
+      color: #ccc;
+      margin-top: 4px;
+      font-size: 1em;
+    }
+
+    .hud {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 700px;
+      color: #81D8D0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #introStack {
+      text-align: center;
+      width: 100%;
+    }
+
+    .chat-thread {
+        width: 100%;
+        max-height: calc(100vh - 350px); /* ✅ ensures the chat doesn't rise too far */
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        scroll-behavior: smooth;
+        background: rgba(17, 17, 17, 0.5);
+        border-radius: 12px;
+    }
+
+
+    .chat-msg {
+      max-width: 75%;
+      padding: 10px 16px;
+      font-size: 0.95em;
+      line-height: 1.4;
+      border-radius: 16px;
+      opacity: 0;
+      animation: fadeInUp 0.3s forwards;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .chat-msg.ai {
+      background: #1a1a1a;
+      color: #81D8D0;
+      align-self: flex-start;
+      border-bottom-left-radius: 0;
+    }
+
+    .chat-msg.user {
+      background: #FF6347;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 0;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #chatForm {
+      width: 100%;
+      display: flex;
+      max-width: 700px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+
+    #chatInput {
+      flex: 1;
+      padding: 10px;
+      font-size: 1em;
+      background: #222;
+      color: #81D8D0;
+      border: 1px solid #555;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    #chatForm button {
+      padding: 10px 18px;
+      margin-left: 10px;
+      background-color: #81D8D0;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      color: black;
+      cursor: pointer;
+    }
+
+    #chatForm button:hover {
+      background-color: #a1f0e5;
+    }
+
+    .enter-button-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #000;
+      padding: 16px;
+      border-top: 1px solid #81D8D0;
+      text-align: center;
+      z-index: 999;
+    }
+
+    .enter-button-container button {
+      padding: 14px 26px;
+      background: #81D8D0;
+      color: black;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background 0.3s ease;
+    }
+
+    .enter-button-container button:hover {
+      background: #a1f0e5;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Main variables
+        let scene, camera, renderer, sphereGroup;
+        let particles, waveSegmentsData = [];
+
+        // Sphere parameters
+        const PARTICLE_COUNT = 8000;
+        const SPHERE_RADIUS = 15;
+        const POLAR_BIAS_STRENGTH = 0.65;
+
+        // Wave segment parameters
+        const SEGMENT_PARTICLE_COUNT = 800;
+        const SEGMENT_ANGULAR_SPREAD = Math.PI / 10;
+        const SEGMENT_COUNT = 15;
+
+        // Base sphere wave parameters
+        let waveParams = {
+            amplitude: 1.55,
+            frequency: 1.2,
+            phaseShift: Math.PI / 4,
+            speed: 0.9
+        };
+
+        // --- Drag, Deform, Bounce Variables ---
+        let isDragging = false;
+        const dragPlane = new THREE.Plane();
+        const dragIntersection = new THREE.Vector3();
+        const dragOffset = new THREE.Vector3();
+        const dragCurrentPos = new THREE.Vector3();
+        const dragVelocity = new THREE.Vector3();
+        const lastDragPos = new THREE.Vector3();
+
+        // --- Enhanced Jelly Physics Variables ---
+        const jellyCoreElasticity = 30;
+        const jellyCoreDamping = 0.8;
+        const jellyPropagationSpeed = 1.5;
+        const jellyDecay = 0.75;
+
+        // Oscillation parameters for jiggle
+        const jellyOscillationFreq = 8.0;
+        const jellyOscillationDamp = 0.75;
+        const jellyMaxDeformation = 3.0;
+
+        const jellyState = {
+            lastImpact: new THREE.Vector3(),
+            impactStrength: 0,
+            impactTime: 0,
+            waves: []
+        };
+
+        // --- Elastic Deformation Variables ---
+        const velocitySmoothingFactor = 4.0;
+        const smoothedDragVelocity = new THREE.Vector3();
+        const targetDeformationOffset = new THREE.Vector3();
+        const currentDeformationOffset = new THREE.Vector3();
+        const deformationThresholdSq = 0.2 * 0.2;
+
+        let isBouncing = false;
+        const bounceTargetPos = new THREE.Vector3(0, 0, 0);
+        const bounceVelocity = new THREE.Vector3();
+        const springConstant = 80;
+        const dampingFactor = 5.0;
+        const clock = new THREE.Clock();
+
+        // --- Wave Functions ---
+        let sphereWaveFunction =
+        (x, z, t) => waveParams.amplitude * Math.sin(waveParams.frequency * x + t) *
+            Math.cos(waveParams.frequency * 0.7 * z + t) *
+            Math.sin(waveParams.frequency * 1.3 * (x + z) + t * 0.5);
+
+        let segmentWaveFunction =
+        (localX, localZ, t, params) => params.amplitude *
+            Math.sin(params.frequency * localX + t + params.phaseShift) *
+            Math.cos(params.frequency * 0.7 * localZ + t * 0.8 + params.phaseShift) *
+            Math.sin(params.frequency * 1.3 * (localX + localZ) + t * 0.5 + params.phaseShift);
+
+        function createSegmentParams(index) {
+            return {
+                amplitude: 1.25 + Math.random() * 2.0,
+                frequency: 0.5 + Math.random() * 0.15,
+                phaseShift: Math.random() * Math.PI * 2,
+                speed: 0.005 + Math.random() * 0.0075,
+                time: Math.random() * 100,
+                hueOffset: 1.3 + (index / SEGMENT_COUNT) * 0.5
+            };
+        }
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 45;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            sphereGroup = new THREE.Group();
+            scene.add(sphereGroup);
+
+            createParticleSphere();
+            createAllWaveSegments();
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('mouseleave', onMouseUp);
+        }
+
+        function createWaveSegment(index) {
+            const params = createSegmentParams(index);
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(SEGMENT_PARTICLE_COUNT * 3);
+            const colors = new Float32Array(SEGMENT_PARTICLE_COUNT * 3);
+            const originalPositions = new Float32Array(SEGMENT_PARTICLE_COUNT * 3);
+            const localCoords = new Float32Array(SEGMENT_PARTICLE_COUNT * 2);
+            const deformationOffsets = new Float32Array(SEGMENT_PARTICLE_COUNT * 3).fill(0);
+            const velocities = new Float32Array(SEGMENT_PARTICLE_COUNT * 3).fill(0); // For jelly physics
+            const sizes = new Float32Array(SEGMENT_PARTICLE_COUNT);
+
+            const goldenRatio = (1 + Math.sqrt(5)) / 2;
+            const iSeg = index + 0.5;
+
+            const normalizedIndex = (iSeg / SEGMENT_COUNT) * 2 - 1;
+            const biasedY = Math.sign(normalizedIndex) * Math.pow(Math.abs(normalizedIndex), POLAR_BIAS_STRENGTH);
+            const centerPhi = Math.acos(biasedY);
+            const centerTheta = 2 * Math.PI * iSeg / goldenRatio;
+
+            const baseHue = params.hueOffset;
+
+            const up = new THREE.Vector3(0, 1, 0);
+            const centerVec = new THREE.Vector3().setFromSphericalCoords(1, centerPhi, centerTheta);
+            const mainAlignmentQuaternion = new THREE.Quaternion().setFromUnitVectors(up, centerVec.clone().normalize());
+
+            const segmentRotationAxis = centerVec.clone().normalize();
+            const segmentRotationAngle = Math.random() * Math.PI * 2;
+            const randomLocalRotationQuaternion = new THREE.Quaternion().setFromAxisAngle(segmentRotationAxis, segmentRotationAngle);
+
+            const blobFrequency = 2 + Math.random() * 6; // How many lobes (e.g., 2-6)
+            const blobAmplitude = 0.15 + Math.random() * 0.25; // How pronounced the lobes are (15%-40%)
+            const blobPhase = Math.random() * Math.PI * 2;
+            const baseParticleSize = 0.18 + Math.random() * 4;
+
+            for (let i = 0; i < SEGMENT_PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const i2 = i * 2;
+
+                const randomAngle = Math.random() * Math.PI * 2;
+
+                // Calculate the maximum angular radius for this angle to create blob shape
+                const maxAngularRadiusForAngle = SEGMENT_ANGULAR_SPREAD * (1 + blobAmplitude * Math.sin(blobFrequency * randomAngle + blobPhase));
+                const particleAngularRadius = Math.random() * maxAngularRadiusForAngle;
+
+                // Calculate local XY based on the angular radius and angle
+                const particleLocalX = particleAngularRadius * Math.cos(randomAngle);
+                const particleLocalZ = particleAngularRadius * Math.sin(randomAngle);
+
+                localCoords[i2] = particleLocalX * SPHERE_RADIUS;
+                localCoords[i2 + 1] = particleLocalZ * SPHERE_RADIUS;
+
+                const localOffsetVec = new THREE.Vector3(particleLocalX, 1, particleLocalZ).normalize();
+
+                const alignedVec = localOffsetVec.clone().applyQuaternion(mainAlignmentQuaternion);
+                const rotatedVec = alignedVec.clone().applyQuaternion(randomLocalRotationQuaternion);
+                
+                // Adjust base radius slightly to prevent particles right at the core sphere radius
+                const finalVec = rotatedVec.multiplyScalar(SPHERE_RADIUS - 1.4 + Math.random() * 1.5);
+
+                positions[i3] = finalVec.x;
+                positions[i3 + 1] = finalVec.y;
+                positions[i3 + 2] = finalVec.z;
+                originalPositions[i3] = finalVec.x;
+                originalPositions[i3 + 1] = finalVec.y;
+                originalPositions[i3 + 2] = finalVec.z;
+
+                const normalizedDist = Math.min(1.0, particleAngularRadius / SEGMENT_ANGULAR_SPREAD);
+                const falloff = Math.pow(1.0 - normalizedDist, 2);
+                sizes[i] = baseParticleSize * falloff;
+
+                const initialWaveY = segmentWaveFunction(localCoords[i2], localCoords[i2+1], params.time, params);
+                const initialIntensity = Math.abs(initialWaveY) / params.amplitude;
+                const hue = baseHue + initialIntensity * 0.1;
+                const saturation = 0.7 + Math.random() * 0.3;
+                
+                // Make dimmer particles slightly less bright overall maybe?
+                const lightness = (0.45 + Math.random() * 0.3) * (0.8 + falloff * 0.2);
+                const color = new THREE.Color();
+                color.setHSL(hue % 1.0, saturation, Math.min(1.0, lightness));
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('originalPosition', new THREE.BufferAttribute(originalPositions, 3));
+            geometry.setAttribute('localCoord', new THREE.BufferAttribute(localCoords, 2));
+            geometry.setAttribute('deformationOffset', new THREE.BufferAttribute(deformationOffsets, 3));
+            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3)); // Make sure this attribute is added
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            geometry.userData = { params: params };
+
+            const material = new THREE.PointsMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.75 + Math.random() * 0.1,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                sizeAttenuation: false // IMPORTANT! To use the 'size' attribute
+            });
+
+            const segmentParticles = new THREE.Points(geometry, material);
+            sphereGroup.add(segmentParticles);
+            return segmentParticles;
+        }
+
+        function createAllWaveSegments() {
+            waveSegmentsData.forEach(data => {
+                if (data.mesh) sphereGroup.remove(data.mesh);
+                if (data.geometry) data.geometry.dispose();
+                if (data.material) data.material.dispose();
+            });
+            waveSegmentsData = [];
+
+            for (let i = 0; i < SEGMENT_COUNT; i++) {
+                const segmentMesh = createWaveSegment(i);
+                waveSegmentsData.push({
+                   mesh: segmentMesh,
+                   geometry: segmentMesh.geometry,
+                   material: segmentMesh.material,
+                   params: segmentMesh.geometry.userData.params
+                });
+            }
+        }
+
+       function createParticleSphere() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(PARTICLE_COUNT * 3);
+            const colors = new Float32Array(PARTICLE_COUNT * 3);
+            const originalPositions = new Float32Array(PARTICLE_COUNT * 3);
+            const sphericalCoords = new Float32Array(PARTICLE_COUNT * 2);
+            const deformationOffsets = new Float32Array(PARTICLE_COUNT * 3).fill(0);
+            const velocities = new Float32Array(PARTICLE_COUNT * 3).fill(0); // For jelly physics
+            const baseColor = new THREE.Color(0x33661c);
+
+            for(let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const i2 = i * 2;
+                const randY = Math.random() * 2 - 1;
+                const yFraction = Math.sign(randY) * Math.pow(Math.abs(randY), POLAR_BIAS_STRENGTH);
+                const phi = Math.acos(yFraction);
+                const theta = Math.random() * Math.PI * 2;
+                sphericalCoords[i2] = theta;
+                sphericalCoords[i2 + 1] = phi;
+                const r = SPHERE_RADIUS;
+                const x = r * Math.sin(phi) * Math.cos(theta);
+                const posY = r * Math.cos(phi);
+                const z = r * Math.sin(phi) * Math.sin(theta);
+                positions[i3] = x;
+                positions[i3 + 1] = posY;
+                positions[i3 + 2] = z;
+                originalPositions[i3] = x;
+                originalPositions[i3 + 1] = posY;
+                originalPositions[i3 + 2] = z;
+                colors[i3] = baseColor.r;
+                colors[i3 + 1] = baseColor.g;
+                colors[i3 + 2] = baseColor.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('originalPosition', new THREE.BufferAttribute(originalPositions, 3));
+            geometry.setAttribute('sphericalCoord', new THREE.BufferAttribute(sphericalCoords, 2));
+            geometry.setAttribute('deformationOffset', new THREE.BufferAttribute(deformationOffsets, 3));
+            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3)); // For jelly physics
+
+            const material = new THREE.PointsMaterial({
+                size: 0.25,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            particles = new THREE.Points(geometry, material);
+            sphereGroup.add(particles);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function getMouseIntersection(event) {
+            mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+            mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+            dragPlane.setFromNormalAndCoplanarPoint(
+                camera.getWorldDirection(dragPlane.normal),
+                sphereGroup.position
+            );
+
+            raycaster.setFromCamera(mouse, camera);
+
+            if (raycaster.ray.intersectPlane(dragPlane, dragIntersection)) {
+                return dragIntersection;
+            }
+            return null;
+        }
+
+        function onMouseDown(event) {
+            if (event.button !== 0) return;
+
+            const intersectPoint = getMouseIntersection(event);
+            if (intersectPoint) {
+                isDragging = true;
+                isBouncing = false;
+                document.body.style.cursor = 'grabbing';
+                dragOffset.copy(intersectPoint).sub(sphereGroup.position);
+                dragCurrentPos.copy(intersectPoint).sub(dragOffset);
+                lastDragPos.copy(dragCurrentPos);
+                dragVelocity.set(0, 0, 0);
+                smoothedDragVelocity.set(0, 0, 0);
+            }
+        }
+
+        function onMouseMove(event) {
+            if (!isDragging) return;
+
+            const intersectPoint = getMouseIntersection(event);
+            if (intersectPoint) {
+                const prevPos = dragCurrentPos.clone();
+                dragCurrentPos.copy(intersectPoint).sub(dragOffset);
+                
+                const moveDist = prevPos.distanceTo(dragCurrentPos);
+                if (moveDist > 0.1) {
+                    const moveDir = new THREE.Vector3().subVectors(dragCurrentPos, prevPos).normalize();
+                    createJellyImpact(moveDir, moveDist * 5);
+                }
+            }
+        }
+
+        function onMouseUp(event) {
+            if (!isDragging) return;
+            isDragging = false;
+            isBouncing = true;
+            document.body.style.cursor = 'grab';
+
+            bounceVelocity.copy(smoothedDragVelocity).multiplyScalar(0.5);
+            
+            if (smoothedDragVelocity.length() > 0.5) {
+                createJellyImpact(
+                    smoothedDragVelocity.clone().normalize(),
+                    smoothedDragVelocity.length() * 2
+                );
+            }
+            
+            dragVelocity.set(0, 0, 0);
+        }
+        
+        function createJellyImpact(direction, strength) {
+            jellyState.lastImpact.copy(direction);
+            jellyState.impactStrength = Math.min(strength, 20.0);
+            jellyState.impactTime = Date.now() * 0.001;
+            
+            jellyState.waves.push({
+                direction: direction.clone(),
+                strength: Math.min(strength, 20.0),
+                startTime: Date.now() * 0.001,
+                propagationDistance: 0
+            });
+            
+            if (jellyState.waves.length > 5) {
+                jellyState.waves.shift();
+            }
+        }
+        
+        function calculateJellyDeformation(position, originalPosition, currentTime) {
+            const result = new THREE.Vector3(0, 0, 0);
+            const normalizedPos = originalPosition.clone().normalize();
+            
+
+            for (let i = 0; i < jellyState.waves.length; i++) {
+                const wave = jellyState.waves[i];
+                const waveAge = currentTime - wave.startTime;
+                
+                const propagationRadius = waveAge * jellyPropagationSpeed;
+                const alignmentWithDirection = normalizedPos.dot(wave.direction);
+                
+                const particleDepth = (alignmentWithDirection + 1) * SPHERE_RADIUS; // Convert from [-1,1] to [0,2*radius]
+                const distanceFromWaveFront = Math.abs(particleDepth - propagationRadius);
+                
+                const distanceInfluence = Math.max(0, 1.0 - distanceFromWaveFront / (SPHERE_RADIUS * 0.5));
+                const ageDecay = Math.max(0, 1.0 - waveAge * jellyDecay);
+                
+                const directionFactor = Math.max(0.1, (alignmentWithDirection + 1.2) / 2.2);
+                const oscillation = Math.sin(waveAge * jellyOscillationFreq) * Math.exp(-waveAge * jellyOscillationDamp);
+                
+                const displacement = oscillation * distanceInfluence * ageDecay * wave.strength * directionFactor;
+                result.add(wave.direction.clone().multiplyScalar(displacement));
+            }
+            
+            const time = Date.now() * 0.001;
+            const id = (originalPosition.x * 100 + originalPosition.y * 10 + originalPosition.z) % 100;
+            const randomJiggle = Math.sin(time * 5 + id) * Math.exp(-time * 0.5) * 0.1;
+            
+            result.x += randomJiggle * normalizedPos.x;
+            result.y += randomJiggle * normalizedPos.y;
+            result.z += randomJiggle * normalizedPos.z;
+            
+            return result;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            sphereGroup.rotation.y += 0.005;
+            
+            const time = Date.now() * 0.001;
+            const deltaTime = Math.min(0.05, clock.getDelta());
+
+            if (isDragging) {
+                dragVelocity.copy(dragCurrentPos).sub(lastDragPos).divideScalar(0.085);
+                lastDragPos.copy(dragCurrentPos);
+                sphereGroup.position.copy(dragCurrentPos);
+            } 
+
+            const lerpAlpha = 1.0 - Math.exp(-velocitySmoothingFactor * deltaTime);
+            smoothedDragVelocity.lerp(dragVelocity, lerpAlpha);
+
+            if (isBouncing) {
+                const displacement = new THREE.Vector3().copy(sphereGroup.position).sub(bounceTargetPos);
+                const springForce = displacement.multiplyScalar(-springConstant);
+                const dampingForce = bounceVelocity.clone().multiplyScalar(-dampingFactor);
+                const totalForce = springForce.add(dampingForce);
+
+                bounceVelocity.add(totalForce.multiplyScalar(deltaTime));
+                sphereGroup.position.add(bounceVelocity.clone().multiplyScalar(deltaTime));
+                
+                if (bounceVelocity.length() > 2.0) {
+                    createJellyImpact(
+                        bounceVelocity.clone().normalize().negate(),
+                        bounceVelocity.length() * 0.5
+                    );
+                }
+
+                if (sphereGroup.position.distanceToSquared(bounceTargetPos) < 0.01 && bounceVelocity.lengthSq() < 0.01) {
+                    isBouncing = false;
+                    sphereGroup.position.copy(bounceTargetPos);
+                    bounceVelocity.set(0, 0, 0);
+                    smoothedDragVelocity.set(0, 0, 0);
+                }
+            }
+
+            // --- Determine if we should be deforming ---
+            const shouldDeform = smoothedDragVelocity.lengthSq() > deformationThresholdSq;
+            const normalizedVel = smoothedDragVelocity.clone().normalize(); 
+            const velMagnitude = smoothedDragVelocity.length();
+            
+            // Clean up old waves
+            jellyState.waves = jellyState.waves.filter(wave => {
+                return (time - wave.startTime) < 3.0; // Keep waves for 3 seconds max
+            });
+
+            // --- Update Base Sphere Particles ---
+            if (particles) {
+                const basePositions = particles.geometry.attributes.position.array;
+                const baseOriginalPositions = particles.geometry.attributes.originalPosition.array;
+                const sphericalCoords = particles.geometry.attributes.sphericalCoord.array;
+                const baseDeformationOffsets = particles.geometry.attributes.deformationOffset.array;
+                const baseVelocities = particles.geometry.attributes.velocity.array;
+
+                for(let i = 0; i < PARTICLE_COUNT; i++) {
+                    const i3 = i * 3;
+                    const i2 = i * 2;
+
+                    const theta = sphericalCoords[i2];
+                    const phi = sphericalCoords[i2 + 1];
+
+                    const ox = baseOriginalPositions[i3];
+                    const oy = baseOriginalPositions[i3 + 1];
+                    const oz = baseOriginalPositions[i3 + 2];
+                    const originalPos = new THREE.Vector3(ox, oy, oz);
+
+                    const waveX = theta * SPHERE_RADIUS / (Math.PI*2);
+                    const waveZ = (phi - Math.PI/2) * SPHERE_RADIUS / Math.PI;
+                    const waveEffect = sphereWaveFunction(waveX, waveZ, time * waveParams.speed + waveParams.phaseShift);
+                    const waveAmplitude = waveParams.amplitude;
+
+                    const length = Math.sqrt(ox*ox + oy*oy + oz*oz);
+                    const invLength = length > 1e-6 ? 1.0 / length : 0;
+                    const ux = ox * invLength;
+                    const uy = oy * invLength;
+                    const uz = oz * invLength;
+
+                    // Position after wave (before deformation)
+                    const wavePx = ox + ux * waveEffect * waveAmplitude;
+                    const wavePy = oy + uy * waveEffect * waveAmplitude;
+                    const wavePz = oz + uz * waveEffect * waveAmplitude;
+                    const wavePosition = new THREE.Vector3(wavePx, wavePy, wavePz);
+
+                    // --- Apply Jelly Physics ---
+                    const vx = baseVelocities[i3];
+                    const vy = baseVelocities[i3 + 1];
+                    const vz = baseVelocities[i3 + 2];
+                    const velocity = new THREE.Vector3(vx, vy, vz);
+                    
+                    const px = basePositions[i3];
+                    const py = basePositions[i3 + 1];
+                    const pz = basePositions[i3 + 2];
+                    const currentPos = new THREE.Vector3(px, py, pz);
+                    
+                    const jellyOffset = calculateJellyDeformation(currentPos, originalPos, time);
+                    const displacement = new THREE.Vector3().subVectors(wavePosition.clone().add(jellyOffset), currentPos);
+                    const springForce = displacement.multiplyScalar(jellyCoreElasticity);
+                    
+                    velocity.multiplyScalar(1.0 - jellyCoreDamping * deltaTime);
+                    velocity.add(springForce.multiplyScalar(deltaTime));
+                    
+                    const newPosition = currentPos.clone().add(velocity.clone().multiplyScalar(deltaTime));
+                    
+                    basePositions[i3] = newPosition.x;
+                    basePositions[i3 + 1] = newPosition.y;
+                    basePositions[i3 + 2] = newPosition.z;
+                    
+                    baseVelocities[i3] = velocity.x;
+                    baseVelocities[i3 + 1] = velocity.y;
+                    baseVelocities[i3 + 2] = velocity.z;
+                    
+                    baseDeformationOffsets[i3] = newPosition.x - wavePx;
+                    baseDeformationOffsets[i3 + 1] = newPosition.y - wavePy;
+                    baseDeformationOffsets[i3 + 2] = newPosition.z - wavePz;
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true
+            }
+
+            waveSegmentsData.forEach(data => {
+                const segment = data.mesh;
+                const geometry = data.geometry;
+                const params = data.params;
+                const segPositions = geometry.attributes.position.array;
+                const originalPositions = geometry.attributes.originalPosition.array;
+                const localCoords = geometry.attributes.localCoord.array;
+                const colors = geometry.attributes.color.array;
+                const segDeformationOffsets = geometry.attributes.deformationOffset.array;
+                const segVelocities = geometry.attributes.velocity.array;
+                
+                params.time += params.speed * deltaTime * 100;
+
+                for (let i = 0; i < SEGMENT_PARTICLE_COUNT; i++) {
+                    const i3 = i * 3;
+                    const i2 = i * 2;
+                    const ox = originalPositions[i3];
+                    const oy = originalPositions[i3 + 1];
+                    const oz = originalPositions[i3 + 2];
+                    const localX = localCoords[i2];
+                    const localZ = localCoords[i2 + 1];
+                    const originalPos = new THREE.Vector3(ox, oy, oz);
+
+                    const waveDisplacement = segmentWaveFunction(localX, localZ, params.time, params);
+
+                    const length = Math.sqrt(ox*ox + oy*oy + oz*oz);
+                    const invLength = length > 1e-6 ? 1.0 / length : 0;
+                    const nx = ox * invLength;
+                    const ny = oy * invLength;
+                    const nz = oz * invLength;
+
+                    const wavePx = ox + nx * waveDisplacement;
+                    const wavePy = oy + ny * waveDisplacement;
+                    const wavePz = oz + nz * waveDisplacement;
+                    const wavePosition = new THREE.Vector3(wavePx, wavePy, wavePz);
+                    
+                    const vx = segVelocities[i3];
+                    const vy = segVelocities[i3 + 1];
+                    const vz = segVelocities[i3 + 2];
+                    const velocity = new THREE.Vector3(vx, vy, vz);
+                    
+                    const px = segPositions[i3];
+                    const py = segPositions[i3 + 1];
+                    const pz = segPositions[i3 + 2];
+                    const currentPos = new THREE.Vector3(px, py, pz);
+                    
+                    const jellyOffset = calculateJellyDeformation(currentPos, originalPos, time);
+                    
+                    const displacement = new THREE.Vector3().subVectors(wavePosition.clone().add(jellyOffset), currentPos);
+                    const springForce = displacement.multiplyScalar(jellyCoreElasticity);
+                    
+                    velocity.multiplyScalar(1.0 - jellyCoreDamping * deltaTime);
+                    velocity.add(springForce.multiplyScalar(deltaTime));
+                    const newPosition = currentPos.clone().add(velocity.clone().multiplyScalar(deltaTime));
+                    
+                    segPositions[i3] = newPosition.x;
+                    segPositions[i3 + 1] = newPosition.y;
+                    segPositions[i3 + 2] = newPosition.z;
+                    
+                    segVelocities[i3] = velocity.x;
+                    segVelocities[i3 + 1] = velocity.y;
+                    segVelocities[i3 + 2] = velocity.z;
+                    
+                    segDeformationOffsets[i3] = newPosition.x - wavePx;
+                    segDeformationOffsets[i3 + 1] = newPosition.y - wavePy;
+                    segDeformationOffsets[i3 + 2] = newPosition.z - wavePz;
+
+                    const deformationAmount = Math.sqrt(
+                        segDeformationOffsets[i3]*segDeformationOffsets[i3] + 
+                        segDeformationOffsets[i3+1]*segDeformationOffsets[i3+1] + 
+                        segDeformationOffsets[i3+2]*segDeformationOffsets[i3+2]
+                    );
+                    
+                    const waveIntensity = Math.min(1.0, Math.abs(waveDisplacement) / (params.amplitude * 0.8));
+                    const jellyIntensity = Math.min(1.0, deformationAmount / (jellyMaxDeformation * 0.5));
+                    const totalIntensity = Math.max(waveIntensity, jellyIntensity);
+                }
+
+                geometry.attributes.position.needsUpdate = true;
+                geometry.attributes.color.needsUpdate = true;
+                geometry.attributes.deformationOffset.needsUpdate = true;
+                geometry.attributes.velocity.needsUpdate = true;
+            });
+            renderer.render(scene, camera);
+        }
+    </script>
+
+
+
+  <!-- 🔝 Top header floating separately -->
+  <div class="intro-heading">
+    <h1>Welcome to DoyenView</h1>
+    <h2>Local P.AI - Private Ai</h2>
+    <p>beta v0.01</p>
+  </div>
+
+  <!-- 📥 HUD with Chat Thread + Input -->
+  <div class="hud">
+    <div id="introStack">
+      <div id="chatThread" class="chat-thread"></div>
+
+      <form id="chatForm">
+        <input type="text" id="chatInput" placeholder="Ask anything..." autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🚪 Enter Button -->
+  <div class="enter-button-container">
+    <form action="{{ url_for('home') }}">
+      <button type="submit">Enter DoyenView</button>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='intro.js') }}"></script>
+
+  <script>
+    const chatThread = document.getElementById("chatThread");
+
+    function addMessage(content, sender = "ai") {
+      const msg = document.createElement("div");
+      msg.classList.add("chat-msg", sender);
+      msg.innerText = content;
+      chatThread.appendChild(msg);
+      chatThread.scrollTop = chatThread.scrollHeight;
+    }
+
+    document.getElementById("chatForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const userInput = document.getElementById("chatInput").value.trim();
+      if (!userInput) return;
+
+      addMessage(userInput, "user");
+
+      fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userInput })
+      })
+      .then(response => response.json())
+      .then(data => {
+        addMessage(data.reply, "ai");
+      });
+
+      document.getElementById("chatInput").value = "";
+    });
+  </script>
+</body>
+</html>
